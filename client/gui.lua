@@ -44,7 +44,6 @@ end
 
 ---Переключает на таб "Вход"
 function LoginGUI:changeToAuthTab()
-    outputChatBox('hello')
     guiSetSelectedTab(self.tabpanel[1], self.tab[1])
 end
 
