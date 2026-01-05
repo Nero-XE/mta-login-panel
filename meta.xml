@@ -1,7 +1,7 @@
 <meta>
     <info 
         author='Nero'
-        version='0.8 beta'
+        version='0.9 beta'
         name='Login panel'
         description='Панель авторизации с сохранением данных для входа, защитой через секретное слово и ограничением создания нескольких аккаунтов с одного устройства.'
         type='script'
@@ -15,6 +15,7 @@
     <script src='shared/*.lua' type='shared' cache='false'/>
 
     <settings>
+        <setting name='@SignUpAttemptsLimit' value='5' desc="Лимит попыток регистрации"/>
         <setting name='@SignInAttemptsLimit' value='5' desc="Лимит попыток авторизации"/>
         <setting name='@Check2FAAttemptsLimit' value='5' desc="Лимит попыток проверки кодового слова" />
     </settings>

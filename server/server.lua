@@ -8,6 +8,57 @@ function Server.restrictPlayerUntilAuth()
     setCameraMatrix(source, -1997.7705078125, 980.21661376953, 113.68701934814)
 end
 
+---Получает значение настройки
+---@param settingName string Название настройки
+---@return number
+local function getSettingValue(settingName)
+    return tonumber(get(string.format('%s.%s', resourceName, settingName))) or 0
+end
+
+--- Обрабатывает попытку операции с проверкой лимита
+--- @param player element Игрок
+--- @param attemptType 'signUp'|'signIn'|'check2FA' Тип операции
+--- @return boolean true если достигнут лимит и игрок кикнут
+local function handleAttempt(player, attemptType)
+    local configs = {
+        signUp = {
+            dataKey = 'loginPanel.signUpAttemptsCount',
+            settingKey = 'SignUpAttemptsLimit',
+            actionName = 'регистрации'
+        },
+        signIn = {
+            dataKey = 'loginPanel.signInAttemptsCount',
+            settingKey = 'SignInAttemptsLimit',
+            actionName = 'авторизации'
+        },
+        check2FA = {
+            dataKey = 'loginPanel.check2FAAttemptsCount',
+            settingKey = 'Check2FAAttemptsLimit',
+            actionName = 'проверки кодового слова'
+        }
+    }
+
+    local config = configs[attemptType]
+
+    local limit = getSettingValue(config.settingKey)
+
+    local currentAttempts = getElementData(player, config.dataKey) or 0
+    currentAttempts = currentAttempts + 1
+    setElementData(player, config.dataKey, currentAttempts)
+
+    if currentAttempts >= limit then
+        local kickMsg = string.format('Слишком много попыток %s', config.actionName)
+        if isElement(player) then
+            kickPlayer(player, kickMsg)
+        end
+        return true
+    else
+        Message.outputWarning(string.format('Попытка %s №%d из %d',
+            config.actionName, currentAttempts, limit), player)
+        return false
+    end
+end
+
 ---Регистрация нового аккаунта
 ---@param login string Логин для нового аккаунта
 ---@param password string Пароль для нового аккаунта
@@ -19,15 +70,17 @@ function Server.onRequestSignUpHandler(login, password, secretCode)
     if #accounts == 0 then
         local accountAdded = addAccount(login, password)
         if accountAdded then
-            setAccountData(accountAdded, 'loginpanel.secretcode', secretCode)
+            setAccountData(accountAdded, 'loginPanel.secretCode', secretCode)
             setAccountSerial(accountAdded, playerSerial)
             triggerClientEvent(client, 'onSignUpSuccess', resourceRoot)
             Message.outputSuccess('Вы успешно зарегистрировались, войдите в аккаунт!', client)
         else
             Message.outputWarning('Введенный логин уже занят!', client)
+            handleAttempt(client, 'signUp')
         end
     else
         Message.outputError('На этом устройстве уже зарегистрирован аккаунт!', client)
+        handleAttempt(client, 'signUp')
     end
 end
 
@@ -62,6 +115,7 @@ function Server.onRequestSignInHandler(login, password)
         end
     else
         Message.outputError('Неверный логин или пароль!', client)
+        handleAttempt(client, 'signIn')
     end
 end
 
@@ -69,11 +123,12 @@ end
 ---@param secretCode string Кодовое слово
 function Server.onRequestCheck2FAHandler(secretCode)
     local account, password = authData.account, authData.password
-    local accountSecret = getAccountData(account, 'loginpanel.secretcode')
+    local accountSecret = getAccountData(account, 'loginPanel.secretCode')
 
     if accountSecret == secretCode then
         completePlayerSignIn(client, account, password)
     else
         Message.outputError('Неверное кодовое слово!', client)
+        handleAttempt(client, 'check2FA')
     end
 end
