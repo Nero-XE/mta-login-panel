@@ -132,3 +132,64 @@ function Server.onRequestCheck2FAHandler(secretCode)
         handleAttempt(client, 'check2FA')
     end
 end
+
+---Устанавливает приватный ключ
+---@param account userdata
+---@param rawKey string
+---@return boolean
+local function setPrivateKey(account, rawKey)
+    local key = toJSON(rawKey)
+    return setAccountData(account, 'loginPanel.privateKey', key)
+end
+
+---Получает приватный ключ
+---@param account userdata Аккаунт
+---@return string|nil
+local function getPrivateKey(account)
+    local rawKey = getAccountData(account, 'loginPanel.privateKey')
+
+    if not rawKey then return end
+    local key = fromJSON(rawKey)
+    return tostring(key)
+end
+
+---Шифрования данных аутентификации
+---@param data string Данные, которые необходимо зашифровать
+function Server.onRequestEncryptAuthDataHandler(data)
+    local player = client
+    local authData = fromJSON(data)
+
+    if not authData then return end
+    local account = getAccount(authData.login, authData.password)
+
+    local privateKey, publicKey = generateKeyPair('rsa', { size = 1024 });
+
+    if not account or not privateKey then return end
+    setPrivateKey(account, privateKey)
+
+    local co = coroutine.create(function ()
+        local encryptedData = coroutine.yield()
+        triggerClientEvent(player, 'onEncryptAuthDataSuccess', resourceRoot, encryptedData)
+    end)
+
+    coroutine.resume(co)
+
+    encodeString('rsa', data, { key = publicKey }, function (result)
+        coroutine.resume(co, result)
+    end)
+end
+
+
+---Дешифровка данных аутентификации
+---@param data string Данные, которые необходимо расшифровать
+function Server.onRequestDecryptAuthDataHandler(data)
+    local playerSerial = getPlayerSerial(client)
+    local account = (getAccountsBySerial(playerSerial) or {})[1]
+    local privateKey = getPrivateKey(account)
+
+    if not privateKey then return end
+    local decryptedData = decodeString('rsa', data, { key = privateKey })
+
+    if not decryptedData then return end
+    triggerClientEvent(client, 'onDecryptAuthDataSuccess', resourceRoot, decryptedData)
+end

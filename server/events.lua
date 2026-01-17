@@ -8,3 +8,9 @@ addEventHandler('onRequestSignIn', resourceRoot, Server.onRequestSignInHandler, 
 
 addEvent('onRequestCheck2FA', true)
 addEventHandler('onRequestCheck2FA', resourceRoot, Server.onRequestCheck2FAHandler, false)
+
+addEvent('onRequestEncryptAuthData', true)
+addEventHandler('onRequestEncryptAuthData', resourceRoot, Server.onRequestEncryptAuthDataHandler, false)
+
+addEvent('onRequestDecryptAuthData', true)
+addEventHandler('onRequestDecryptAuthData', resourceRoot, Server.onRequestDecryptAuthDataHandler, false)

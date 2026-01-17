@@ -8,24 +8,28 @@ function Client.restrictPlayerUntilAuth()
     showChat(true, true)
 end
 
----Получение и подстановка данных аутентификации (если файл с данными существует у клиента)
----@return boolean|nil
-function Client.getAuthData()
-    local fileContent = AuthData:getFileContent()
+---Хендлер на успешную дешифровку файла авторизации и подстановка значений в поля ввода
+---@param decryptedData string
+function Client.onDecryptAuthDataSuccessHandler(decryptedData)
+    local authData = fromJSON(decryptedData)
 
-    if not fileContent then return false end
-    local authData = fromJSON(fileContent)
-
-    if not authData then return false end
+    if not authData then return end
     LoginGUI:setAuthData(authData.login, authData.password)
 end
 
+---Запрос на дешифровку данных аутентификации (если файл с данными существует у клиента)
+function Client.decryptAuthData()
+    local fileContent = AuthData:getFileContent()
+
+    if not fileContent then return end
+    triggerServerEvent('onRequestDecryptAuthData', resourceRoot, fileContent)
+end
+
 ---Обрабатывает запрос на регистрацию нового пользователя
----@return boolean|nil
 function Client.requestSignUpHandler()
     local login, password, secretCode = LoginGUI:getRegisterData()
 
-    if not Validator:validate({ login = login, password = password, secretCode = secretCode }, 'signUp') then return false end
+    if not Validator:validate({ login = login, password = password, secretCode = secretCode }, 'signUp') then return end
 
     triggerServerEvent('onRequestSignUp', resourceRoot, login, password, secretCode)
 end
@@ -47,15 +51,14 @@ local function prepareAuthData(login, password)
 end
 
 ---Обрабатывает запрос на авторизацию пользователя
----@return boolean|nil
 function Client.requestSignInHandler()
     local login, password, isRememberAuthData = LoginGUI:getAuthData()
 
-    if not Validator:validate({ login = login, password = password }, 'signIn') then return false end
+    if not Validator:validate({ login = login, password = password }, 'signIn') then return end
 
     triggerServerEvent('onRequestSignIn', resourceRoot, login, password)
 
-    if not isRememberAuthData then return false end
+    if not isRememberAuthData then return end
 
     prepareAuthData(login, password)
 end
@@ -72,12 +75,18 @@ local function releasePlayerAfterAuth()
     showCursor(false)
 end
 
+---Хендлер на успешную шифровку данных аутентификации
+---@param encryptedData string
+function Client.onEncryptAuthDataSuccessHandler(encryptedData)
+    AuthData:syncDataToFile(encryptedData)
+end
+
 ---Хендлер на успешную авторизацию игрока
 function Client.onSignInSuccessHandler()
     releasePlayerAfterAuth()
 
     if preparedAuthData then
-        AuthData:syncDataToFile(preparedAuthData)
+        triggerServerEvent('onRequestEncryptAuthData', resourceRoot, preparedAuthData)
     else
         AuthData:deleteDataFile()
     end
