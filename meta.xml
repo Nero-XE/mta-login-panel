@@ -1,7 +1,7 @@
 <meta>
     <info 
         author='Nero'
-        version='0.10 beta'
+        version='0.10.1 beta'
         name='Login panel'
         description='Панель авторизации с сохранением данных для входа, защитой через секретное слово и ограничением создания нескольких аккаунтов с одного устройства.'
         type='script'
