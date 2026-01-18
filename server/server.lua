@@ -185,6 +185,8 @@ end
 function Server.onRequestDecryptAuthDataHandler(data)
     local playerSerial = getPlayerSerial(client)
     local account = (getAccountsBySerial(playerSerial) or {})[1]
+
+    if not account then return end
     local privateKey = getPrivateKey(account)
 
     if not privateKey then return end
